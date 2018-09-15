@@ -1,1 +1,10 @@
-# Conves-Hull-Exercise
+# Convex-Hull-Exercise
+Implementation of Graham's Scan algorithm
+Determines the convex hull of a user-defined set of points
+Used JSXGraph library for visual display of graph and tracking of points
+
+More info about Graham's Scan algorithm can be found hereL
+https://en.wikipedia.org/wiki/Graham_scan
+
+Link:
+http://www.randyjackson.net/convex_hull/
