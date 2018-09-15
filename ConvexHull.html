@@ -1,0 +1,260 @@
+<!-- 
+----------------------Randy Jackson
+----------------------N01173844
+----------------------201880.CIS4930
+----------------------HW3 / Graham's Scan 
+-->
+ <head>
+	<meta charset="UTF-8">
+	<link rel="stylesheet" type="text/css" href="http://jsxgraph.uni-bayreuth.de/distrib/jsxgraph.css" />
+	<script type="text/javascript" src="http://jsxgraph.uni-bayreuth.de/distrib/jsxgraphcore.js"></script>
+</head>
+
+<body>
+	<div id="jxgbox" class="jxgbox" style="left:350px; position:absolute; width:1000px; height:600px;"> </div> 	
+	<button id="button1" type="button" style="left:700px; width:250px; position:absolute; top:700px;" onclick="findConvexHull(board)">Find convex hull</button>
+	<div id="textDiv" style="left:700px; width:250px; position:absolute; top:750px; color:blue; ">
+	Instructions:<br>
+	-Click on the graph to add points.<br>
+	-When completed, click "Find convex hull" button to display the convex hull of the points.<br>
+	</div>
+	
+	<script type="text/javascript">	
+		/***************** Do not alter, unless required! ***************/
+		var boardParams = { boundingbox: [-0.2,50,50,-0.2], 
+			               grid :true, 
+			               axis: false, 
+			               showCopyright:false, 
+			               showNavigation:false, 
+			              };
+					  	
+		var getMouseCoords = function(e, i) 
+		{
+			var cPos = board.getCoordsTopLeftCorner(e, i),
+			absPos = JXG.getPosition(e, i),
+			dx = absPos[0] - cPos[0],
+			dy = absPos[1] - cPos[1];
+            return new JXG.Coords(JXG.COORDS_BY_SCREEN, [dx, dy], board);
+        }; 
+     	/*********************************************************************/
+		/* The Graham's scan function */
+		function findConvexHull(board)
+		{
+			var N = 0, P = [];			
+			
+			for(var el in board.objects)
+			{
+				if(board.objects[el].elType == 'point')
+				{
+					P[N] = board.objects[el];		
+					N++;
+				}
+			}
+			
+			//find lowest Y point with lowest X
+			var lowestPoint = findLowestPoint(P, N);
+
+			//make lowest Y index 0 in array
+			makeLowestFirst(lowestPoint, P)
+			
+			//remove lowest Y from array, save object in min
+			var min = P.shift();
+			
+			//obtain polar angles for elements in array
+			polar_angles(min, P);
+			
+			//sort into cClockwise-clockwise
+			P.sort(function(a,b) 
+				{ 
+					return a.polar - b.polar; 
+				}
+			);
+
+			//check for equal polar angles, remove lowest if duplicate
+			equalAngleCheck(min, P);
+			
+			//perform graham's scan and return completed array
+			var scanComplete = grahamScan(min, P);
+			
+			//draw polygon
+			drawLines(scanComplete);          
+		}
+//graham's scan functions ------------------------------------------------------------------------------------------
+		
+		function drawLines(scanComplete)
+		{
+			//obtain an array of x and y coords for polygon creation
+			var coordArray = getCoords(scanComplete);
+			
+			//creat polygon using points in completed array
+			var fill = board.create('polygon', coordArray, {name:'fill', fillColor: 'red', strokeColor: "green"});
+		}
+
+		var getCoords = function(scanComplete)
+		{
+			//creates an array of sub-arrays containing x and y coords for polygon creation
+			var returnArray = [];
+
+			for(var i = 0; i < scanComplete.length; i++)
+			{
+				var coords = [];
+
+				coords.push(scanComplete[i].X());
+				coords.push(scanComplete[i].Y());
+
+				returnArray.push(coords);
+			}
+
+			return returnArray;
+		}
+
+
+		var grahamScan = function(min, arr)
+		{
+			var complete = []; 
+			
+			//push initial 2 vertices before beginning scan
+			complete.push(min);
+			complete.push(arr[0]); 
+			complete.push(arr[1]); 
+
+			for(var i=2; i < arr.length; i++) 
+			{ 
+				var next = arr[i]; 
+				
+				//if next element is not clockwise, pop
+				//else push element
+
+				while(cClockwise(complete[complete.length - 2], complete[complete.length - 1], next) <= 0) 
+				{ 
+					complete.pop(); 
+				} 
+				
+				complete.push(next); 
+			}
+			
+			return complete;
+		}
+
+//computation functions --------------------------------------------------------------------------------------------		
+		
+		//if cClockwise > 0, clockwise 
+		//if cClockwise < 0, counter-clockwise
+		//if cClockwise = 0, colinear
+
+		var cClockwise = function(a, b, c) 
+		{ 
+			return (b.X() - a.X())*(c.Y() - a.Y()) - (b.Y() - a.Y())*(c.X() - a.X()); 
+		} 
+
+		//distance calculated using vector length
+
+		var distance = function(a, b) 
+		{
+			return (b.X() - a.X()) * (b.X() - a.X()) + (b.Y() - a.Y()) * (b.Y() - a.Y());
+		}
+
+		var equalAngleCheck = function(min, arr) 
+		{
+			// if two points have same polar angle delete closest
+			
+			for(var i=1; i < arr.length; i++) 
+			{ 
+				if (arr[i-1].polar == arr[i].polar) 
+				{ 
+					var d1 = distance(min, arr[i-1]); 
+					var d2 = distance(min, arr[i]); 
+
+					if (d2 < d1) 
+					{
+						arr.splice(i, 1);
+					} 
+					else 
+					{
+						arr.splice(i-1, 1);
+					}
+				}
+			}
+		}
+
+		var cartesianEquation = function(x, y) 
+		{
+			if (x > 0 && y > 0)
+				return Math.atan( y / x);
+			else if (x < 0 && y > 0)
+				return Math.atan(-x / y) + Math.PI / 2;
+			else if (x < 0 && y < 0) 
+				return Math.atan( y / x) + Math.PI; 
+			else if (x > 0 && y < 0) 
+				return Math.atan(-x / y) + Math.PI / 2 + Math.PI; 
+			else if (x == 0 && y > 0)
+				return Math.PI / 2;
+			else if (x < 0 && y == 0) 
+				return Math.PI; 
+			else if (x == 0 && y < 0) 
+			return Math.PI / 2 + Math.PI; 
+			else return 0; 
+		} 
+
+		var getAngle = function(p1, p2) 
+		{ 
+			return cartesianEquation( p2.X() - p1.X() , p2.Y() - p1.Y() ) 
+		}
+
+		function polar_angles(min, arr) 
+		{ 
+			for(var i=0; i < arr.length; i++) 
+			{ 
+				arr[i].polar = getAngle(min, arr[i]); 
+			}    
+		}
+
+//finding lowest Y functions----------------------------------------------------------------------------------------
+
+		function makeLowestFirst(L,P)
+		{
+			temp = P[0];
+			P[0] = P[L];
+			P[L] = temp;
+		}
+
+		function findLowestPoint(pointArray, length)
+		{
+			var lowestY = pointArray[0].Y();
+			var lowestX = pointArray[0].X();
+			var index = 0;
+
+			for(var i = 1; i < length; i++)
+			{
+				if ( (pointArray[i].Y() < lowestY) || (lowestY == pointArray[i].Y() && pointArray[i].X() < lowestX ) )
+				{
+					lowestY = pointArray[i].Y();
+					lowestX = pointArray[i].X();
+					index = i;
+				}		
+			}
+			return index;
+		}
+
+
+//Mouse drawing function----------------------------------------------------------------------------------------------
+        var down = function(e) 
+        {
+			var canCreatePoint = true, i, coords;
+			if (e[JXG.touchProperty])			
+				i = 0; 				
+			coords = getMouseCoords(e, i);
+			var point = board.create('point',[coords.usrCoords[1],coords.usrCoords[2]], {highlightFillColor:'Gray', highlightStrokeColor:'Gray', size:2, 		
+                        fillColor:'RoyalBlue',  strokeColor:'RoyalBlue'});
+		};
+		/*********************************************************************/	
+		/* Create a board */
+		var board = JXG.JSXGraph.initBoard('jxgbox',boardParams);		
+		board.on('down', down);
+     	board.off('off', down);
+	</script>
+</body>
+
+
+
+
